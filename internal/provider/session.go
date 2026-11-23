@@ -172,6 +172,10 @@ type SessionConfig struct {
 	Language string
 	Turn     TurnDetection
 	Tools    []ToolSpec
+	// EnableSearch asks the provider to ground answers with its own web
+	// search. Only a profile that accepts it (Profile.AcceptsSearch) uses it;
+	// others ignore it.
+	EnableSearch bool
 	// OpeningText is what the bot says at the start of the call: not a brief
 	// for a greeting but the greeting, in the words the flow chose. Empty
 	// leaves the opening to the model, which is what every call did before

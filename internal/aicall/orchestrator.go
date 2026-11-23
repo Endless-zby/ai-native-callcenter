@@ -201,6 +201,10 @@ type OrchestratorConfig struct {
 	// Profile is the provider this deployment runs, resolved at startup. The
 	// same one answers every call, whatever language it is in.
 	Profile provider.Profile
+	// EnableSearch asks the provider to ground answers with its own web
+	// search on every call (AICC_ENABLE_SEARCH); the provider's profile
+	// decides whether it takes the field.
+	EnableSearch bool
 	// DefaultCountryCode and DialForm are the deployment's
 	// AICC_DEFAULT_COUNTRY_CODE and AICC_OUTBOUND_DIAL_FORM: take_message
 	// checks a callback number against the one and writes it in the other, so
@@ -502,7 +506,7 @@ func (o *Orchestrator) runCall(ctx context.Context, dialog *voice.Dialog) error 
 		})
 	}
 
-	sessionCfg := o.sessionConfig(sessionConfigFor(spec, runtime, language), actions.isArmed, log)
+	sessionCfg := o.sessionConfig(sessionConfigFor(spec, runtime, language, o.cfg.EnableSearch), actions.isArmed, log)
 	sessionCfg.OnCutAcknowledged = actions.onCutAcknowledged
 	// Listen before opening only on a call this platform placed to a customer:
 	// on an inbound or internal call the caller expects to be greeted, and a
@@ -563,17 +567,21 @@ func (o *Orchestrator) runCall(ctx context.Context, dialog *voice.Dialog) error 
 // bridge is running, the greeting is already being made. Session.Start adds
 // the opening gate (SessionConfig.OpeningGate) when the deployment holds the
 // greeting for the caller's media; it is not part of what a flow decides.
-func sessionConfigFor(spec *flow.Spec, runtime *flow.Runtime, language string) provider.SessionConfig {
+//
+// enableSearch is the deployment's AICC_ENABLE_SEARCH; a provider whose
+// profile does not accept the field ignores it.
+func sessionConfigFor(spec *flow.Spec, runtime *flow.Runtime, language string, enableSearch bool) provider.SessionConfig {
 	return provider.SessionConfig{
 		Instructions: runtime.Instructions(),
 		Language:     language,
 		// The bot's own voice, published with the flow. Empty falls back
 		// to the provider profile's default.
-		Voice:       spec.Global.Voice,
-		Temperature: spec.Global.Temperature,
-		Turn:        provider.DefaultTurnDetection(),
-		Tools:       runtime.Tools(),
-		OpeningText: runtime.Announce(),
+		Voice:        spec.Global.Voice,
+		Temperature:  spec.Global.Temperature,
+		Turn:         provider.DefaultTurnDetection(),
+		Tools:        runtime.Tools(),
+		OpeningText:  runtime.Announce(),
+		EnableSearch: enableSearch,
 	}
 }
 

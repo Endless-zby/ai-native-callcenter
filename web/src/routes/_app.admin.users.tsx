@@ -7,9 +7,11 @@ import { PageHeader } from '@/components/page-header'
 import { Field, Input, RecordDialog, Select, useRecordForm } from '@/components/record-dialog'
 import { CellText, DataTable, TBody, THead, TableMessage, Td, Th, Tr } from '@/components/table'
 import { Button } from '@/components/ui/button'
-import type { Role } from '@/lib/api'
+import { useRoster } from '@/lib/agent'
+import type { Role, RosterEntry } from '@/lib/api'
 import { describeError, fieldErrorText } from '@/lib/errors'
 import { requireRole } from '@/lib/guards'
+import { cn } from '@/lib/utils'
 import { needsPhone, useUserMutations, useUsers, type User, type UserDraft } from '@/lib/users'
 
 /**
@@ -33,6 +35,14 @@ const ROLES: Role[] = ['AGENT', 'SUPERVISOR', 'ADMIN']
 function UsersAdmin() {
   const { t } = useTranslation()
   const { data, isPending, isError, error } = useUsers()
+  // The roster is where the switch's view of each phone lives: a user row says
+  // which extension an account was given, and the roster says whether that
+  // phone is registered right now — no sign-in needed, unlike the supervisor
+  // screen.
+  const roster = useRoster(true)
+  const byUser = new Map(
+    (roster.data?.items ?? []).map((row) => [row.userId, row] as const),
+  )
   const { create, update, assignPhone, resetPassword } = useUserMutations()
   const [editing, setEditing] = useRecordForm<UserDraft>(create, update)
   const [resetting, setResetting] = useState<User | null>(null)
@@ -94,13 +104,14 @@ function UsersAdmin() {
           <Th>{t('users.role')}</Th>
           <Th>{t('users.status')}</Th>
           <Th>{t('users.extension')}</Th>
+          <Th>{t('users.device')}</Th>
           <Th align="right" />
         </THead>
         <TBody>
-          {isPending && <TableMessage colSpan={6}>{t('common.loading')}</TableMessage>}
-          {isError && <TableMessage colSpan={6}>{describeError(error, t)}</TableMessage>}
+          {isPending && <TableMessage colSpan={7}>{t('common.loading')}</TableMessage>}
+          {isError && <TableMessage colSpan={7}>{describeError(error, t)}</TableMessage>}
           {!isPending && !isError && rows.length === 0 && (
-            <TableMessage colSpan={6}>{t('users.noUsers')}</TableMessage>
+            <TableMessage colSpan={7}>{t('users.noUsers')}</TableMessage>
           )}
           {rows.map((user) => (
             <Tr key={user.userId}>
@@ -157,6 +168,12 @@ function UsersAdmin() {
                     {describeError(assignPhone.error, t)}
                   </span>
                 )}
+              </Td>
+              <Td>
+                <DeviceState
+                  user={user}
+                  entry={user.agentId ? byUser.get(user.userId) : undefined}
+                />
               </Td>
               <Td align="right">
                 <span className="flex justify-end gap-1">
@@ -264,5 +281,30 @@ function UsersAdmin() {
         </Field>
       </RecordDialog>
     </>
+  )
+}
+
+/**
+ * Whether the account's phone is registered right now.
+ *
+ * An account with no ACD identity takes no calls, so there is no device to
+ * report. An identity the roster does not list, or lists as unregistered, has
+ * no phone answering at the moment. This is the switch's registration state,
+ * not presence: it is true whether or not the agent signed in.
+ */
+function DeviceState({ user, entry }: { user: User; entry?: RosterEntry }) {
+  const { t } = useTranslation()
+  if (!user.agentId) {
+    return <span className="text-muted-foreground">{t('users.deviceNone')}</span>
+  }
+  const isOnline = entry?.isRegistered === true
+  return (
+    <span className={cn('flex items-center gap-1.5 text-sm', !isOnline && 'text-muted-foreground')}>
+      <span
+        className="size-2 shrink-0 rounded-full"
+        style={{ backgroundColor: isOnline ? 'var(--state-available)' : 'var(--state-offline)' }}
+      />
+      {isOnline ? t('users.deviceOnline') : t('users.deviceOffline')}
+    </span>
   )
 }

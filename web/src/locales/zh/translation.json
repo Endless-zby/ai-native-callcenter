@@ -508,7 +508,9 @@
       "HUMAN_AGENT": "坐席"
     },
     "noRecord": "没有通话记录",
-    "noRecordHint": "账本中没有这通电话的记录。从未到达交换机的呼叫（例如被跳过的号码）不会留下记录。"
+    "noRecordHint": "账本中没有这通电话的记录。从未到达交换机的呼叫（例如被跳过的号码）不会留下记录。",
+    "transcriptColumn": "文字记录",
+    "transcriptButton": "查看文字"
   },
   "callbacks": {
     "hint": "机器人在电话里承诺的回访。回拨前先认领。",
@@ -817,7 +819,11 @@
     "passwordHint": "至少 8 位。没有任何地方能读回它，管理员只能重设。",
     "resetPassword": "重设口令",
     "resetTitle": "为 {{username}} 设置口令",
-    "resetHint": "用旧口令建立的会话会全部结束。"
+    "resetHint": "用旧口令建立的会话会全部结束。",
+    "device": "设备状态",
+    "deviceOnline": "在线",
+    "deviceOffline": "未注册",
+    "deviceNone": "—"
   },
   "webhooks": {
     "title": "Webhook",

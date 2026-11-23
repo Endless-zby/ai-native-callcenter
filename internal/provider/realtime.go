@@ -1595,6 +1595,13 @@ func (r *Realtime) buildSessionUpdate(cfg SessionConfig, isReduced bool) map[str
 			session["input_audio_transcription"] = map[string]any{"language": language}
 		}
 	}
+	// The provider's own web search grounds answers the flow cannot know:
+	// weather, opening hours, news. Deployment-wide (AICC_ENABLE_SEARCH)
+	// because a flow cannot tell whether the account has the capability on,
+	// and optional like the temperature: a reduced retry drops it.
+	if cfg.EnableSearch && r.profile.AcceptsSearch && !isReduced {
+		session["enable_search"] = true
+	}
 	return map[string]any{"type": "session.update", "session": session}
 }
 

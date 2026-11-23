@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
 
 import type { User } from '@/lib/users'
+import type { RosterEntry } from '@/lib/api'
 import { renderWithProviders } from '@/test/harness'
 
 import { Route } from './_app.admin.users'
@@ -26,6 +27,24 @@ function userFixture(over: Partial<User>): User {
     status: 'ACTIVE',
     // What an account that never chose one reads as.
     locale: 'en',
+    ...over,
+  }
+}
+
+/** One agent as the roster reports them: presence plus the phone's registration. */
+function rosterEntry(over: Partial<RosterEntry>): RosterEntry {
+  return {
+    agentId: id(11),
+    userId: id(1),
+    username: 'amy',
+    displayName: 'Amy',
+    state: 'READY',
+    availability: 'READY',
+    enteredAt: '2026-10-20T09:00:00Z',
+    isOnCall: false,
+    isRegistered: true,
+    callcenterName: 'agent-amy',
+    isAutoAnswer: false,
     ...over,
   }
 }
@@ -54,7 +73,10 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 /** The users endpoints, giving a phone on update the way the server does. */
-function stubUsers(accounts: User[], { isPoolExhausted = false } = {}) {
+function stubUsers(
+  accounts: User[],
+  { isPoolExhausted = false, roster = [] }: { isPoolExhausted?: boolean; roster?: RosterEntry[] } = {},
+) {
   const rows = accounts.map((a) => ({ ...a }))
   const requests: Recorded[] = []
   let nextNumber = 1004
@@ -66,6 +88,7 @@ function stubUsers(accounts: User[], { isPoolExhausted = false } = {}) {
       const body = typeof init.body === 'string' ? JSON.parse(init.body) : undefined
       requests.push({ method, path, body })
       if (path === '/users' && method === 'GET') return json({ items: rows })
+      if (path === '/agents' && method === 'GET') return json({ items: roster })
       if (path.startsWith('/users/') && method === 'PUT') {
         if (isPoolExhausted) {
           return json({ error: { code: 'EXTENSION_POOL_EXHAUSTED', message: 'no numbers' } }, 409)
@@ -144,6 +167,30 @@ describe('assigning a phone', () => {
       'There are no free extension numbers left in the pool.',
     )
     expect(within(rowOf('cara')).queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * The device column reads the switch's registration state from the roster, by
+ * userId, without needing the agent to have signed in.
+ */
+describe('the device column', () => {
+  it('shows each identity as online or offline, and no device for an account without one', async () => {
+    stubUsers(ACCOUNTS, {
+      roster: [
+        rosterEntry({ userId: id(1), agentId: id(11), isRegistered: true }),
+        rosterEntry({ userId: id(2), agentId: id(12), isRegistered: false }),
+      ],
+    })
+    renderWithProviders(<Users />)
+    await screen.findByText('amy')
+
+    expect(within(rowOf('amy')).getByText('Online')).toBeInTheDocument()
+    expect(within(rowOf('cara')).getByText('Offline')).toBeInTheDocument()
+    // An administrator takes no calls, so there is no phone to be on or off.
+    expect(within(rowOf('root')).getByText('—')).toBeInTheDocument()
+    // An identity the roster has no row for is not registered right now.
+    expect(within(rowOf('wei')).getByText('Offline')).toBeInTheDocument()
   })
 })
 

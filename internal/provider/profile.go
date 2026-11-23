@@ -164,6 +164,14 @@ type Profile struct {
 	// mid-call update never carries it.
 	AcceptsTranscriptionLanguage bool
 
+	// AcceptsSearch means the provider's realtime session takes
+	// enable_search, its own web-search grounding for answers. True on qwen
+	// only, where the account decides whether the capability is on and the
+	// field is part of the session configuration; no other engine here
+	// defines the field, so none is sent one. Optional like the temperature:
+	// the reduced retry drops it.
+	AcceptsSearch bool
+
 	// AcceptsResponseToolChoice means a response.create may carry tool_choice
 	// in its response object and the engine obeys it, and this client sends
 	// "none" on every request for a line (SpeakText: a phase's announce, the
@@ -314,6 +322,10 @@ func QwenProfile() Profile {
 		// default the session has and survives an instructions-only update
 		// (qwen-findings W-Q19, #602).
 		AcceptsTranscriptionLanguage: true,
+		// The account, not the flow, decides whether web search is available,
+		// so this says the session can be asked and AICC_ENABLE_SEARCH says
+		// whether this deployment asks.
+		AcceptsSearch: true,
 
 		AcceptsG711:  false,
 		LinearInput:  media.PCM16Format(media.RateProviderIn),

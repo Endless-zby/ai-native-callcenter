@@ -558,6 +558,7 @@ func run() error {
 			cfg.DefaultCountryCode,
 			cfg.OutboundDialForm,
 			quotaMeter,
+			cfg.EnableSearch,
 		))
 		if err != nil {
 			return fmt.Errorf("build ai voice leg: %w", err)

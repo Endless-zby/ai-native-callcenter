@@ -384,3 +384,23 @@ func TestTheQuotaLimitsAreTheDefaultModelsAndOverridable(t *testing.T) {
 		})
 	}
 }
+
+// AICC_ENABLE_SEARCH reaches the wire on the one provider that defines the
+// field, and on no other; the reduced retry drops it.
+func TestEnableSearchIsSentOnlyWhereTheProfileAcceptsIt(t *testing.T) {
+	qwen := &Realtime{profile: QwenProfile()}
+	session := qwen.buildSessionUpdate(SessionConfig{EnableSearch: true}, false)["session"].(map[string]any)
+	if session["enable_search"] != true {
+		t.Errorf("qwen enable_search = %v, want true", session["enable_search"])
+	}
+	if off := qwen.buildSessionUpdate(SessionConfig{}, false)["session"].(map[string]any); off["enable_search"] != nil {
+		t.Error("search is on without AICC_ENABLE_SEARCH")
+	}
+	if reduced := qwen.buildSessionUpdate(SessionConfig{EnableSearch: true}, true)["session"].(map[string]any); reduced["enable_search"] != nil {
+		t.Error("the reduced retry still asks for search")
+	}
+	openai := &Realtime{profile: OpenAIProfile()}
+	if _, present := openai.buildSessionUpdate(SessionConfig{EnableSearch: true}, false)["session"].(map[string]any)["enable_search"]; present {
+		t.Error("a provider that does not define enable_search was sent one")
+	}
+}

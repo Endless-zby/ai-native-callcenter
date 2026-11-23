@@ -1174,7 +1174,7 @@ func TestTheEntryPhasesLineOpensTheCall(t *testing.T) {
 	engine := flow.NewEngine(spec, "zh", nil, log)
 	runtime := flow.NewRuntime(engine, &callActions{log: log}, flow.NewBackend(""), nil, log)
 
-	cfg := sessionConfigFor(spec, runtime, "zh")
+	cfg := sessionConfigFor(spec, runtime, "zh", false)
 	if cfg.OpeningText != "感谢致电，请问有什么可以帮您？" {
 		t.Errorf("openingText = %q, want the entry phase's line in the call's language",
 			cfg.OpeningText)
@@ -1192,7 +1192,7 @@ func TestTheEntryPhasesLineOpensTheCall(t *testing.T) {
 	plainEngine := flow.NewEngine(plain, "en", nil, log)
 	plainRuntime := flow.NewRuntime(plainEngine, &callActions{log: log},
 		flow.NewBackend(""), nil, log)
-	if got := sessionConfigFor(plain, plainRuntime, "en").OpeningText; got != "" {
+	if got := sessionConfigFor(plain, plainRuntime, "en", false).OpeningText; got != "" {
 		t.Errorf("openingText = %q, want nothing", got)
 	}
 }
@@ -1208,7 +1208,7 @@ func TestTheFlowsTemperatureReachesTheSessionConfig(t *testing.T) {
 		}
 		engine := flow.NewEngine(spec, "en", nil, log)
 		runtime := flow.NewRuntime(engine, &callActions{log: log}, flow.NewBackend(""), nil, log)
-		return sessionConfigFor(spec, runtime, "en")
+		return sessionConfigFor(spec, runtime, "en", false)
 	}
 	if got := build(driveFlow).Temperature; got != nil {
 		t.Errorf("temperature = %v, want nil for a flow that names none", *got)
@@ -2903,5 +2903,22 @@ func TestAfterTheRefusalAModelThatNeverSpeaksEndsAtTheCap(t *testing.T) {
 	case <-fired:
 	case <-time.After(3 * time.Second):
 		t.Fatal("the cap did not end the call")
+	}
+}
+
+// The deployment's AICC_ENABLE_SEARCH reaches the session configuration.
+func TestTheSearchFlagReachesTheSessionConfig(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	spec, err := flow.Load([]byte(driveFlow))
+	if err != nil {
+		t.Fatalf("load flow: %v", err)
+	}
+	engine := flow.NewEngine(spec, "en", nil, log)
+	runtime := flow.NewRuntime(engine, &callActions{log: log}, flow.NewBackend(""), nil, log)
+	if !sessionConfigFor(spec, runtime, "en", true).EnableSearch {
+		t.Error("the session configuration does not carry AICC_ENABLE_SEARCH")
+	}
+	if sessionConfigFor(spec, runtime, "en", false).EnableSearch {
+		t.Error("search is on without AICC_ENABLE_SEARCH")
 	}
 }

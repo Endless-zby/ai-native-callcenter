@@ -510,7 +510,9 @@
       "HUMAN_AGENT": "Agent"
     },
     "noRecord": "No call record",
-    "noRecordHint": "This call has no record in the ledger. Calls that never reached the switch, such as a skipped number, leave none."
+    "noRecordHint": "This call has no record in the ledger. Calls that never reached the switch, such as a skipped number, leave none.",
+    "transcriptColumn": "Transcript",
+    "transcriptButton": "View"
   },
   "callbacks": {
     "hint": "Promises the bot made on the phone. Claim one before you ring.",
@@ -821,7 +823,11 @@
     "passwordHint": "At least 8 characters. Nothing can read it back; an administrator can only replace it.",
     "resetPassword": "Reset password",
     "resetTitle": "Set a password for {{username}}",
-    "resetHint": "Every session opened with the old password is ended."
+    "resetHint": "Every session opened with the old password is ended.",
+    "device": "Device",
+    "deviceOnline": "Online",
+    "deviceOffline": "Offline",
+    "deviceNone": "—"
   },
   "webhooks": {
     "title": "Webhooks",

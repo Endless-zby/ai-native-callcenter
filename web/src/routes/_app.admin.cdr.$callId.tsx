@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 
 import { PageHeader } from '@/components/page-header'
 import { RecordingPlayer } from '@/components/recording-player'
+import { TranscriptLines } from '@/components/transcript-dialog'
 import { useNameThisPage } from '@/lib/breadcrumb'
 import { ApiError } from '@/lib/api'
 import { describeError } from '@/lib/errors'
 import { requireRole } from '@/lib/guards'
 import {
   formatDuration, recordingAudioUrl, useCDR,
-  type CDR, type TranscriptLine,
+  type CDR,
 } from '@/lib/ledger'
 
 /** One finished call: its facts, its recording, and the words spoken. */
@@ -129,11 +130,7 @@ function CallDetail() {
         {transcript.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t('cdr.noTranscript')}</p>
         ) : (
-          <ol className="space-y-2">
-            {transcript.map((entry) => (
-              <TranscriptRow key={entry.seq} entry={entry} startedAt={cdr.startedAt} />
-            ))}
-          </ol>
+          <TranscriptLines lines={transcript} startedAt={cdr.startedAt} />
         )}
       </div>
     </>
@@ -169,51 +166,5 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
       <dt className="text-xs text-muted-foreground wrap-anywhere">{label}</dt>
       <dd className="text-[13px] wrap-anywhere">{children}</dd>
     </div>
-  )
-}
-
-/** Seconds into the call, so the transcript reads against the recording. */
-function offsetLabel(occurredAt: string, startedAt: string): string {
-  const offset = (new Date(occurredAt).getTime() - new Date(startedAt).getTime()) / 1000
-  return formatDuration(offset)
-}
-
-function TranscriptRow({ entry, startedAt }: { entry: TranscriptLine; startedAt: string }) {
-  const { t } = useTranslation()
-  const isCustomer = entry.speaker === 'CUSTOMER'
-
-  let body: React.ReactNode
-  if (entry.kind === 'TEXT') {
-    body = <span>{String(entry.content.text ?? '')}</span>
-  } else if (entry.kind === 'TOOL_CALL') {
-    body = (
-      <span className="text-muted-foreground">
-        {t('cdr.toolCalled', { tool: String(entry.content.name ?? '') })}
-      </span>
-    )
-  } else if (entry.kind === 'TOOL_RESULT') {
-    body = (
-      <span className="text-muted-foreground">
-        {t('cdr.toolAnswered', { tool: String(entry.content.name ?? '') })}
-      </span>
-    )
-  } else {
-    body = <span className="text-muted-foreground">{JSON.stringify(entry.content)}</span>
-  }
-
-  return (
-    <li className="flex gap-3 text-[13px]">
-      <span className="w-12 shrink-0 pt-px text-right text-xs tabular text-muted-foreground">
-        {offsetLabel(entry.occurredAt, startedAt)}
-      </span>
-      <span
-        className={`w-14 shrink-0 pt-px text-xs font-medium ${
-          isCustomer ? 'text-foreground' : 'text-primary'
-        }`}
-      >
-        {t(`cdr.speakers.${entry.speaker}`)}
-      </span>
-      <span className="min-w-0 flex-1 wrap-anywhere">{body}</span>
-    </li>
   )
 }

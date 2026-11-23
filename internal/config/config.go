@@ -76,6 +76,10 @@ type Config struct {
 	BotRTPPortLow   int
 	BotRTPPortHigh  int
 	BotMaxCalls     int
+	// EnableSearch turns on the provider's own web search on the realtime
+	// session (Qwen: enable_search). Off by default: it costs latency and
+	// money, and a call centre mostly answers from its own flow.
+	EnableSearch bool
 	// BotInboundReserve is how many of BotMaxCalls an outbound reservation may
 	// not take, kept for inbound calls (AICC_BOT_INBOUND_RESERVE). 0 (the
 	// default) reserves nothing at reservation time. IsBotInboundReserveSet says
@@ -513,6 +517,7 @@ func Load() (Config, error) {
 		BotRTPPortLow:                   envInt("AICC_BOT_RTP_PORT_LOW", 26000),
 		BotRTPPortHigh:                  envInt("AICC_BOT_RTP_PORT_HIGH", 29999),
 		BotMaxCalls:                     envInt("AICC_BOT_MAX_CALLS", 220),
+		EnableSearch:                    envBool("AICC_ENABLE_SEARCH", false),
 		BotInboundReserve:               envInt("AICC_BOT_INBOUND_RESERVE", 0),
 		IsBotInboundReserveSet:          envIsSet("AICC_BOT_INBOUND_RESERVE"),
 		OverflowTightenRate:             envFloat("AICC_OVERFLOW_TIGHTEN_RATE", DefaultOverflowTightenRate),

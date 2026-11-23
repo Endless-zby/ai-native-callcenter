@@ -610,6 +610,9 @@ func TestEveryBotDependencyIsPlumbed(t *testing.T) {
 		"86",
 		phonenum.FormNational,
 		ratemeter.New(nil, ratemeter.Config{}),
+		// A setting the command must carry through, not a zero value: the
+		// assertion below refuses a field left unset.
+		true,
 	)
 
 	// The greeting gate is exempt only when unset, which is a real setting
@@ -675,7 +678,7 @@ func TestBotConfigCarriesTheGreetingMediaWait(t *testing.T) {
 			}
 			got := botConfig(botUAS(cfg, nil), nil, nil, nil, nil, nil, nil, provider.Profile{},
 				nil, nil, nil, nil, nil, cfg.IsBotGreetingGated, cfg.BotGreetingMediaWait, cfg.BotNoInputTimeout,
-				cfg.BotMaxCallDuration, cfg.BotEchoDumpDir, cfg.IsBotEchoSuppressionEnabled, cfg.DefaultCountryCode, cfg.OutboundDialForm, nil)
+				cfg.BotMaxCallDuration, cfg.BotEchoDumpDir, cfg.IsBotEchoSuppressionEnabled, cfg.DefaultCountryCode, cfg.OutboundDialForm, nil, false)
 			if got.IsGreetingGated != tc.wantGated || got.GreetingMediaWait != tc.wantWait {
 				t.Errorf("orchestrator gate = %v, %s, want %v, %s",
 					got.IsGreetingGated, got.GreetingMediaWait, tc.wantGated, tc.wantWait)
@@ -709,7 +712,7 @@ func TestBotConfigCarriesTheNoInputTimeout(t *testing.T) {
 			}
 			got := botConfig(botUAS(cfg, nil), nil, nil, nil, nil, nil, nil, provider.Profile{},
 				nil, nil, nil, nil, nil, cfg.IsBotGreetingGated, cfg.BotGreetingMediaWait, cfg.BotNoInputTimeout,
-				cfg.BotMaxCallDuration, cfg.BotEchoDumpDir, cfg.IsBotEchoSuppressionEnabled, cfg.DefaultCountryCode, cfg.OutboundDialForm, nil)
+				cfg.BotMaxCallDuration, cfg.BotEchoDumpDir, cfg.IsBotEchoSuppressionEnabled, cfg.DefaultCountryCode, cfg.OutboundDialForm, nil, false)
 			if got.NoInput != tc.want {
 				t.Errorf("orchestrator NoInput = %s, want %s", got.NoInput, tc.want)
 			}
@@ -744,9 +747,43 @@ func TestBotConfigCarriesTheMaxCallDuration(t *testing.T) {
 			got := botConfig(botUAS(cfg, nil), nil, nil, nil, nil, nil, nil, provider.Profile{},
 				nil, nil, nil, nil, nil, cfg.IsBotGreetingGated, cfg.BotGreetingMediaWait, cfg.BotNoInputTimeout,
 				cfg.BotMaxCallDuration, cfg.BotEchoDumpDir, cfg.IsBotEchoSuppressionEnabled, cfg.DefaultCountryCode,
-				cfg.OutboundDialForm, nil)
+				cfg.OutboundDialForm, nil, false)
 			if got.MaxCallDuration != tc.want {
 				t.Errorf("orchestrator MaxCallDuration = %s, want %s", got.MaxCallDuration, tc.want)
+			}
+		})
+	}
+}
+
+// The provider's own web search must come from configuration, off by default.
+func TestBotConfigCarriesTheSearchFlag(t *testing.T) {
+	cases := []struct {
+		name  string
+		value *string
+		want  bool
+	}{
+		{"unset is off", nil, false},
+		{"a deployment's value", ptr("true"), true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("AICC_ENV", "dev")
+			if tc.value == nil {
+				t.Setenv("AICC_ENABLE_SEARCH", "")
+				os.Unsetenv("AICC_ENABLE_SEARCH")
+			} else {
+				t.Setenv("AICC_ENABLE_SEARCH", *tc.value)
+			}
+			cfg, err := config.Load()
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			got := botConfig(botUAS(cfg, nil), nil, nil, nil, nil, nil, nil, provider.Profile{},
+				nil, nil, nil, nil, nil, cfg.IsBotGreetingGated, cfg.BotGreetingMediaWait, cfg.BotNoInputTimeout,
+				cfg.BotMaxCallDuration, cfg.BotEchoDumpDir, cfg.IsBotEchoSuppressionEnabled, cfg.DefaultCountryCode,
+				cfg.OutboundDialForm, nil, cfg.EnableSearch)
+			if got.EnableSearch != tc.want {
+				t.Errorf("orchestrator EnableSearch = %v, want %v", got.EnableSearch, tc.want)
 			}
 		})
 	}

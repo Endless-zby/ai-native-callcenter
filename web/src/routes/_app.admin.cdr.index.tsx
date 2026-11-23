@@ -6,6 +6,7 @@ import { Loader2, Play, Square } from 'lucide-react'
 import { PageHeader } from '@/components/page-header'
 import { Select } from '@/components/record-dialog'
 import { CellText, DataTable, TBody, THead, TableMessage, Td, Th, Tr } from '@/components/table'
+import { TranscriptDialog } from '@/components/transcript-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { describeError } from '@/lib/errors'
@@ -29,6 +30,7 @@ function CDRExplorer() {
   const [status, setStatus] = useState('')
   const [numberQuery, setNumberQuery] = useState('')
   const [page, setPage] = useState(0)
+  const [transcriptFor, setTranscriptFor] = useState<string | null>(null)
 
   const { data, isPending, isError, error } = useCDRs({
     status: status || undefined,
@@ -84,13 +86,14 @@ function CDRExplorer() {
           <Th>{t('cdr.journey')}</Th>
           <Th>{t('cdr.status')}</Th>
           <Th align="right">{t('cdr.duration')}</Th>
+          <Th>{t('cdr.transcriptColumn')}</Th>
           <Th align="right">{t('cdr.playColumn')}</Th>
         </THead>
         <TBody>
-          {isPending && <TableMessage colSpan={7}>{t('common.loading')}</TableMessage>}
-          {isError && <TableMessage colSpan={7}>{describeError(error, t)}</TableMessage>}
+          {isPending && <TableMessage colSpan={8}>{t('common.loading')}</TableMessage>}
+          {isError && <TableMessage colSpan={8}>{describeError(error, t)}</TableMessage>}
           {!isPending && rows.length === 0 && (
-            <TableMessage colSpan={7}>{t('cdr.noCalls')}</TableMessage>
+            <TableMessage colSpan={8}>{t('cdr.noCalls')}</TableMessage>
           )}
           {rows.map((row) => (
             <Tr key={row.callId}>
@@ -127,6 +130,15 @@ function CDRExplorer() {
               <Td align="right" className="tabular">
                 {formatDuration(row.totalSec)}
               </Td>
+              <Td>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setTranscriptFor(row.callId)}
+                >
+                  {t('cdr.transcriptButton')}
+                </Button>
+              </Td>
               <Td align="right">
                 {row.hasRecording && <PlayCell callId={row.callId} player={player} />}
               </Td>
@@ -154,6 +166,10 @@ function CDRExplorer() {
             </Button>
           </span>
         </div>
+      )}
+
+      {transcriptFor !== null && (
+        <TranscriptDialog callId={transcriptFor} onClose={() => setTranscriptFor(null)} />
       )}
     </>
   )

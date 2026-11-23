@@ -118,7 +118,7 @@ func playE2EScript(t *testing.T, isHeard bool) (string, *guardLeads) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := o.sessionConfig(sessionConfigFor(spec, runtime, "en"), actions.isArmed, log)
+	cfg := o.sessionConfig(sessionConfigFor(spec, runtime, "en", false), actions.isArmed, log)
 	cfg.OnCutAcknowledged = actions.onCutAcknowledged
 	session, err := New(newFakeLeg(media.LawMu), model, profile, cfg)
 	if err != nil {

@@ -732,6 +732,7 @@ func botConfig(
 	countryCode string,
 	dialForm phonenum.DialForm,
 	quotaMeter *ratemeter.Meter,
+	enableSearch bool,
 ) aicall.OrchestratorConfig {
 	return aicall.OrchestratorConfig{
 		UAS: uas,
@@ -775,6 +776,8 @@ func botConfig(
 		// dials: AICC_DEFAULT_COUNTRY_CODE and AICC_OUTBOUND_DIAL_FORM.
 		DefaultCountryCode: countryCode,
 		DialForm:           dialForm,
+		// AICC_ENABLE_SEARCH: the provider's own web search on every call.
+		EnableSearch: enableSearch,
 	}
 }
 
