@@ -69,6 +69,43 @@ ssh aicc-root 'cd /opt/aicc/deploy && docker compose exec -T aicc aicc doctor \
 compose 不一定会自动替换容器，所以强制重建）；PostgreSQL 与 FreeSWITCH 不动，
 数据卷保留，数据库迁移在应用启动时自动执行。
 
+## 不随仓库走的部署产物
+
+以下内容在生产机上就地维护，`git reset --hard` 不会删除它们：
+
+| 路径 | 内容 |
+|---|---|
+| `/opt/aicc/deploy/.env` | 生产配置与密钥（root 0600）：provider key、数据库/ESL 口令、`AICC_ENABLE_SEARCH` 等 |
+| `/opt/aicc/deploy/flows/` | 业务话术 JSON（如 `junyue-hotel-flow.json`），导入后即入库，文件只作留档 |
+
+导入/更新一个流程（`flowadd` 会校验、发布，并在号码不存在时创建它）：
+
+```sh
+ssh aicc-root 'cd /opt/aicc/deploy && \
+  docker compose cp flows/<flow>.json aicc:/tmp/<flow>.json && \
+  docker compose exec -T aicc aicc flowadd \
+    -file /tmp/<flow>.json -did <号码> -language zh -name "<显示名>"'
+```
+
+2026-11-23 已导入：`junyue_hotel`（贵阳观山湖军阅国际酒店前台客服），
+DID `8900`（仅呼入，录音开启）指向它，转人工走 `support-zh` 队列。
+
+## 运营商中继（trunk）
+
+入站号码由运营商送到交换机；出站/外呼需要：
+
+1. `deploy/freeswitch/sip_profiles/` 下放网关文件（`<gateway name="…">`），
+   并通过 `deploy/docker-compose.override.yml` 挂到
+   `conf/sip_profiles/external/`；
+2. `deploy/.env` 设 `AICC_OUTBOUND_ENDPOINT=sofia/gateway/<name>/%s`，
+   必要时设 `AICC_OUTBOUND_DIAL_FORM`（`E164`/`NATIONAL`）和网关的
+   `destination-prefix`；
+3. 重建应用与网关：`docker compose up -d --force-recreate aicc`，
+   `docker compose exec freeswitch fs_cli -P 18021 -p "$ESL_PASSWORD" -x "sofia profile external rescan"`；
+4. `aicc doctor` 应显示 `outbound_endpoint`、`outbound_gateway` 为 PASS。
+
+细节见上游 `deploy/carrier.md`。
+
 ## 常用运维
 
 ```sh
