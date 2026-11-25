@@ -3,6 +3,9 @@
 > 本文件是本仓库（`Endless-zby/ai-native-callcenter`）的运维约定，上游
 > `rasonyang/ai-native-callcenter` 没有它。上游的构建/部署文档仍以
 > `deploy/README.md` 为准。
+>
+> **日常改动上线流程**（本地提交 → 生产机构建 → 重启验证）见
+> [`CUSTOM-WORKFLOW.md`](CUSTOM-WORKFLOW.md)；流程有变化时更新那份文档。
 
 ## 分支模型
 
