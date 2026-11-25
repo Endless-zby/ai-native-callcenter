@@ -37,13 +37,56 @@ scripts/fork-sync.sh            # fetch upstream -> main 快进 -> 合并进 cus
 | 代码 | `/opt/aicc`（生产机自己的 clone，部署分支 `custom`） |
 | 部署目录 | `/opt/aicc/deploy`，配置在 `.env`（root 0600） |
 | 拓扑 | `docker-compose.yml` + `compose.linux.yml`（app 与 switch 用 host 网络） |
-| 入口 | `http://<生产主机>:8080`；SIP 5060/udp+tcp、WS 5066、WSS 7443；RTP 20000-25999（switch）/ 26000-29999（bot） |
+| 入口 | `http://<生产主机>:8080`；SIP **5072**/udp+tcp（5060 已停用，见下）、WS 5066、WSS 7443；RTP 20000-25999（switch）/ 26000-29999（bot） |
 | 镜像 | 在**生产机本地**构建（`aicc:local`），switch 用 `rasonyang/freeswitch-aicc:v0.9.1` |
 | 模型 | qwen（`AICC_PROVIDER=qwen`，key 在 `deploy/.env`），`AICC_ENABLE_SEARCH=true` |
 
 构建走国内镜像（已写入 `deploy/.env`）：`GOPROXY=https://goproxy.cn,direct`、
 `NPM_REGISTRY=https://registry.npmmirror.com/`、`BASE_IMAGE=gcr.m.daocloud.io/distroless/static-debian12:nonroot`，
 Docker daemon 配置了 `registry-mirrors`（见 `/etc/docker/daemon.json`）。
+
+## 公网 SIP 端口：5072（绕开边缘 SIP ALG）
+
+公网出口 `220.197.177.220` 后面是一台 Ubuntu 边缘机，它的 conntrack SIP
+helper（SIP ALG）会改写 5060 上的 SIP 报文：把 `220.197.177.220` 改写成内网
+`10.1.91.56`，并改写 SDP 的媒体端口（受控测试里发出的 `m=audio 5098` 到达
+交换机时变成 `5100`）。这会让 RTP 端口错位、双向无声；浏览器坐席走
+WebRTC/SRTP，ALG 看不到，所以不受影响。
+
+因此交换机的 internal profile 监听 **5072**，边缘映射：
+
+```
+5072/udp → 10.1.91.56:5072
+```
+
+5060 不再监听，公网 5060 映射应删除。内网 SIP 话机/软电话需注册到
+`10.1.91.56:5072`（当前还没有外部 PBX，暂不受影响）。
+
+持久化（容器重建/主机重启后仍是 5072）：
+
+```sh
+cd /opt/aicc/deploy
+./prepare-fs-vars.sh            # 从 switch 镜像生成 freeswitch-vars.xml（internal_sip_port=5072）
+# deploy/.env 的 COMPOSE_FILE 追加第三段：
+#   COMPOSE_FILE=docker-compose.yml:compose.linux.yml:compose.sip5072.yml
+docker compose up -d --force-recreate freeswitch
+docker compose exec -T freeswitch fs_cli -P 18021 -p "$ESL_PASSWORD" \
+  -x "sofia status profile internal"
+```
+
+`deploy/compose.sip5072.yml` 把生成的 `freeswitch-vars.xml` 挂到
+`/usr/local/freeswitch/conf/vars.xml`。**升级 switch 镜像后必须重新执行
+`prepare-fs-vars.sh`**：新镜像的 vars.xml 会替换挂载内容，否则端口会回到
+5060，公网媒体问题复发。
+
+公网软电话注册：
+
+| 字段 | 值 |
+|---|---|
+| Domain | `220.197.177.220` |
+| Registrar URI | `sip:220.197.177.220:5072` |
+| Transport | UDP |
+| Username / Password | 分机号 / 该分机的 SIP 密码 |
 
 ## 发布一次改动
 
