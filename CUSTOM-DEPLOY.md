@@ -62,22 +62,23 @@ WebRTC/SRTP，ALG 看不到，所以不受影响。
 5060 不再监听，公网 5060 映射应删除。内网 SIP 话机/软电话需注册到
 `10.1.91.56:5072`（当前还没有外部 PBX，暂不受影响）。
 
-持久化（容器重建/主机重启后仍是 5072）：
+持久化用派生镜像（容器重建/主机重启后仍是 5072）：
 
 ```sh
 cd /opt/aicc/deploy
-./prepare-fs-vars.sh            # 从 switch 镜像生成 freeswitch-vars.xml（internal_sip_port=5072）
-# deploy/.env 的 COMPOSE_FILE 追加第三段：
-#   COMPOSE_FILE=docker-compose.yml:compose.linux.yml:compose.sip5072.yml
+docker build -t aicc-freeswitch:5072 freeswitch-5072
+# deploy/.env 设置：
+#   AICC_FS_IMAGE=aicc-freeswitch:5072
 docker compose up -d --force-recreate freeswitch
 docker compose exec -T freeswitch fs_cli -P 18021 -p "$ESL_PASSWORD" \
   -x "sofia status profile internal"
 ```
 
-`deploy/compose.sip5072.yml` 把生成的 `freeswitch-vars.xml` 挂到
-`/usr/local/freeswitch/conf/vars.xml`。**升级 switch 镜像后必须重新执行
-`prepare-fs-vars.sh`**：新镜像的 vars.xml 会替换挂载内容，否则端口会回到
-5060，公网媒体问题复发。
+`deploy/freeswitch-5072/Dockerfile` 基于 `rasonyang/freeswitch-aicc:v0.9.1`，
+在构建层把 `vars.xml` 的 `internal_sip_port` 改成 5072。**升级 switch 镜像时
+要同步改 Dockerfile 的 FROM 并重新构建**，否则端口会回到 5060、公网媒体问题
+复发。（不要用 bind mount 覆盖 vars.xml：entrypoint 用 `sed -i` 改写它，单文件
+挂载会报 `Device or resource busy`。）
 
 公网软电话注册：
 
